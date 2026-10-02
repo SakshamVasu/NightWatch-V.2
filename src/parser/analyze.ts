@@ -112,7 +112,7 @@ function buildNseScripts(
 ): NseScript[] {
   return raw.map((r) => {
     const state = detectState(r.body);
-    const cves = collectCves(r.id, r.body);
+    const cves = collectCves(r.body);
     return {
       id: r.id,
       host: r.host,
@@ -145,7 +145,7 @@ function detectState(body: string): string | undefined {
 }
 
 /** Merge structured vulners rows with any loose CVE ids in the body. */
-function collectCves(id: string, body: string): Cve[] {
+function collectCves(body: string): Cve[] {
   const rows = parseVulnersRows(body);
   const byId = new Map<string, Cve>();
   for (const r of rows) byId.set(r.id, r);

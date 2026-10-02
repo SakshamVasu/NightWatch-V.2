@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Night Watch (standalone)</title>
+<!--
+  Zero-build standalone version of Night Watch (Nmap analysis).
+  Open this file directly in any modern browser — no npm or build step.
+  React + Babel load from a CDN at runtime (needs internet the
+  first time). The Nmap parser is the SAME code as the Vite app, transpiled
+  from src/parser/*.ts. Scan parsing and Local assistant mode run in your browser.
+  Optional AI mode sends scan context to your selected provider after acknowledgement.
+-->
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.25.9/babel.min.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; scrollbar-width: thin; scrollbar-color: #333333 transparent; }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-thumb { background: #333333; border-radius: 6px; }
+  body { margin: 0; background: #000000; color: #e2e8f0;
+    font-family: Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  .card { border: 1px solid rgba(255,255,255,0.22); background: rgba(13,20,34,.72); border-radius: 12px; backdrop-filter: blur(6px); }
+  .btn { display:inline-flex; align-items:center; gap:6px; border:1px solid rgba(255,255,255,0.22);
+    background:#161616; padding:8px 12px; border-radius:8px; font-size:13px; color:#e2e8f0;
+    cursor:pointer; font-weight:500; }
+  .btn:hover { border-color:#ffffff99; color:#fff; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .btnp { display:inline-flex; align-items:center; gap:6px; background:#ffffff; color:#000000;
+    padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; border:none; cursor:pointer; }
+  .btnp:disabled { opacity:.4; cursor:not-allowed; }
+  .input { width:100%; border:1px solid rgba(255,255,255,0.22); background:#080808; padding:8px 12px;
+    border-radius:8px; font-size:13px; color:#f1f5f9; }
+  .input:focus { outline:none; border-color:#ffffff; }
+  .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:6px;
+    font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
+  table { border-collapse: collapse; width:100%; }
+  th { padding:8px 12px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase;
+    letter-spacing:.05em; color:#94a3b8; }
+  td { padding:8px 12px; font-size:13px; color:#e2e8f0; vertical-align:top; }
+  pre { margin:0; }
+  .tabbtn { display:flex; align-items:center; gap:10px; width:100%; padding:8px 12px; border-radius:8px;
+    font-size:13px; background:none; border:none; color:#94a3b8; cursor:pointer; text-align:left; }
+  .tabbtn:hover { background:#161616; color:#e2e8f0; }
+  .tabbtn.active { background:rgba(255,255,255,.15); color:#ffffff; font-weight:500; }
+  details>summary { cursor:pointer; }
+  /* Night Watch futuristic landing */
+  .nw-hero { background: radial-gradient(1200px 600px at 50% -10%, rgba(255,255,255,.08), transparent 60%), #05080f; }
+  .nw-grid { position:absolute; inset:-2px; background-image: linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px), linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px); background-size:42px 42px; -webkit-mask-image:radial-gradient(circle at 50% 40%,#000 0%,transparent 78%); mask-image:radial-gradient(circle at 50% 40%,#000 0%,transparent 78%); animation:nw-drift 24s linear infinite; }
+  @keyframes nw-drift { from{background-position:0 0,0 0;} to{background-position:42px 42px,42px 42px;} }
+  .nw-scan { position:absolute; left:0; right:0; height:180px; top:-180px; background:linear-gradient(to bottom,transparent,rgba(255,255,255,.12),transparent); animation:nw-sweep 6s ease-in-out infinite; }
+  @keyframes nw-sweep { 0%{top:-180px;opacity:0;} 15%{opacity:1;} 85%{opacity:1;} 100%{top:100%;opacity:0;} }
+  .nw-glow { position:absolute; border-radius:999px; filter:blur(90px); opacity:.5; pointer-events:none; }
+  .nw-glow-1 { width:380px; height:380px; background:rgba(255,255,255,.25); top:-120px; left:-80px; animation:nw-float 14s ease-in-out infinite; }
+  .nw-glow-2 { width:320px; height:320px; background:rgba(37,99,235,.22); bottom:-120px; right:-60px; animation:nw-float 18s ease-in-out infinite reverse; }
+  @keyframes nw-float { 0%,100%{transform:translate(0,0);} 50%{transform:translate(30px,-20px);} }
+  .nw-title { color:#f8fafc; text-shadow:0 0 30px rgba(255,255,255,.35); }
+  .nw-badge { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.35); box-shadow:0 0 30px rgba(255,255,255,.2), inset 0 0 20px rgba(255,255,255,.06); animation:nw-pulse 3.5s ease-in-out infinite; }
+  @keyframes nw-pulse { 0%,100%{box-shadow:0 0 24px rgba(255,255,255,.18),inset 0 0 18px rgba(255,255,255,.05);} 50%{box-shadow:0 0 44px rgba(255,255,255,.35),inset 0 0 22px rgba(255,255,255,.1);} }
+  .nw-card { background:rgba(11,17,28,.72); border:1px solid rgba(255,255,255,.18); box-shadow:0 20px 60px rgba(0,0,0,.5); backdrop-filter:blur(12px); }
+  .nw-drop { border:1.5px dashed rgba(255,255,255,.3); background:rgba(255,255,255,.02); transition:.15s; }
+  .nw-drop:hover { border-color:rgba(255,255,255,.6); background:rgba(255,255,255,.05); }
+  .nw-drop-active { border-color:rgba(255,255,255,.9)!important; background:rgba(255,255,255,.08)!important; box-shadow:inset 0 0 30px rgba(255,255,255,.12); }
+  .nw-ring { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.3); }
+  .nw-cta { display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius:12px; padding:13px 20px; font-size:15px; font-weight:700; color:#000000; background:linear-gradient(135deg,#ffffff,#cbd5e1); border:none; cursor:pointer; transition:.15s; box-shadow:0 8px 24px rgba(255,255,255,.3); }
+  .nw-cta:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 12px 32px rgba(255,255,255,.45); }
+  .nw-cta:disabled { opacity:.4; cursor:not-allowed; box-shadow:none; }
+  /* Persistent space backdrop behind whole app */
+  .nw-bg { position:fixed; inset:0; z-index:0; pointer-events:none; background:#000000; }
+  .nw-bg-dim .nw-galaxy { opacity:.16; } .nw-bg-dim .nw-planet-a,.nw-bg-dim .nw-planet-b { opacity:.35; } .nw-bg-dim .nw-planet-c { opacity:.4; } .nw-bg-dim .nw-stars span { opacity:.7; } .nw-bg-dim .nw-nebula { opacity:.12; }
+  /* Space intro (Landing) */
+  .nw-space { position:relative; background:#000000; overflow-x:hidden; }
+  .nw-stars { position:fixed; inset:0; z-index:0; pointer-events:none; }
+  .nw-stars span { position:absolute; border-radius:999px; background:#ffffff; box-shadow:0 0 6px rgba(255,255,255,.7); animation:nw-twinkle linear infinite; }
+  @keyframes nw-twinkle { 0%,100%{opacity:.15;transform:scale(.8);} 50%{opacity:1;transform:scale(1.15);} }
+  .nw-galaxy { position:fixed; z-index:0; top:10%; left:50%; width:900px; height:900px; margin-left:-450px; pointer-events:none; background:conic-gradient(from 0deg,rgba(255,255,255,0),rgba(255,255,255,.10),rgba(255,255,255,.12),rgba(255,255,255,0),rgba(255,255,255,.10),rgba(255,255,255,0)); border-radius:999px; filter:blur(30px); opacity:.22; -webkit-mask-image:radial-gradient(circle,#000 0%,#000 35%,transparent 70%); mask-image:radial-gradient(circle,#000 0%,#000 35%,transparent 70%); animation:nw-rotate 90s linear infinite; }
+  @keyframes nw-rotate { to{transform:rotate(360deg);} }
+  .nw-planet { position:fixed; z-index:0; border-radius:999px; pointer-events:none; }
+  .nw-planet-a { width:220px; height:220px; top:12%; right:8%; background:radial-gradient(circle at 32% 30%,#c9ccd1,#3a3d42 70%,#0a0a0a); box-shadow:inset -14px -10px 40px rgba(0,0,0,.65),0 0 60px rgba(255,255,255,.35); animation:nw-bob 12s ease-in-out infinite; }
+  .nw-planet-b { width:120px; height:120px; bottom:16%; left:9%; background:radial-gradient(circle at 35% 30%,#a9adb4,#2c2e33 72%,#0a0a0a); box-shadow:inset -10px -8px 26px rgba(0,0,0,.6),0 0 44px rgba(255,255,255,.4); animation:nw-bob 15s ease-in-out infinite reverse; }
+  .nw-planet-c { width:70px; height:70px; top:62%; right:18%; background:radial-gradient(circle at 35% 30%,#ffffff,#46484d 72%,#0a0a0a); box-shadow:inset -6px -5px 16px rgba(0,0,0,.6),0 0 30px rgba(255,255,255,.5); animation:nw-bob 10s ease-in-out infinite; }
+  @keyframes nw-bob { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-16px);} }
+  .nw-shoot { position:fixed; z-index:0; width:150px; height:2px; background:linear-gradient(90deg,transparent,#fff,rgba(255,255,255,.9),transparent); opacity:0; border-radius:2px; filter:drop-shadow(0 0 6px rgba(255,255,255,.7)); pointer-events:none; }
+  .nw-shoot-1 { top:14%; left:-12%; animation:nw-shoot1 9s ease-in infinite; }
+  .nw-shoot-2 { top:34%; left:-12%; width:110px; animation:nw-shoot2 13s ease-in infinite; animation-delay:3.5s; }
+  .nw-shoot-3 { top:8%; left:-12%; width:180px; animation:nw-shoot3 17s ease-in infinite; animation-delay:7s; }
+  @keyframes nw-shoot1 { 0%{transform:translate(0,0) rotate(18deg);opacity:0;} 4%{opacity:1;} 13%{transform:translate(125vw,40vh) rotate(18deg);opacity:0;} 100%{opacity:0;} }
+  @keyframes nw-shoot2 { 0%{transform:translate(0,0) rotate(12deg);opacity:0;} 4%{opacity:1;} 11%{transform:translate(130vw,26vh) rotate(12deg);opacity:0;} 100%{opacity:0;} }
+  @keyframes nw-shoot3 { 0%{transform:translate(0,0) rotate(24deg);opacity:0;} 3%{opacity:1;} 12%{transform:translate(128vw,55vh) rotate(24deg);opacity:0;} 100%{opacity:0;} }
+  .nw-nebula { position:fixed; z-index:0; width:640px; height:460px; border-radius:999px; pointer-events:none; filter:blur(70px); opacity:.18; background:radial-gradient(circle at 40% 40%,rgba(255,255,255,.4),transparent 60%),radial-gradient(circle at 65% 55%,rgba(255,255,255,.35),transparent 60%); animation:nw-float 26s ease-in-out infinite; }
+  .nw-nebula-1 { top:48%; left:-140px; }
+  .nw-nebula-2 { top:-120px; right:-120px; animation-direction:reverse; animation-duration:32s; }
+  .nw-hero-screen { position:relative; z-index:2; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; }
+  .nw-type-title { font-size:clamp(2.6rem,9vw,5.5rem); font-weight:900; letter-spacing:.02em; margin:0; text-shadow:0 0 40px rgba(255,255,255,.4); min-height:1.2em; }
+  .nw-caret { color:#ffffff; animation:nw-blink 1s steps(1) infinite; margin-left:2px; }
+  @keyframes nw-blink { 0%,50%{opacity:1;} 50.01%,100%{opacity:0;} }
+  .nw-scroll-hint { position:absolute; bottom:32px; display:flex; flex-direction:column; align-items:center; gap:4px; opacity:0; transition:opacity 1s ease .4s; }
+  .nw-scroll-show { opacity:1; }
+  .nw-scroll-hint .chev { animation:nw-bounce 1.6s ease-in-out infinite; font-size:20px; color:#ffffff; }
+  @keyframes nw-bounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(6px);} }
+  .nw-start-screen { position:relative; z-index:2; min-height:70vh; display:flex; align-items:center; justify-content:center; padding:24px 24px 80px; }
+  .nw-cta-lg { padding:15px 28px; font-size:16px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+/* The tested Nmap parser, transpiled from src/parser/*.ts. */
+(function(global){
+/*__PARSER__*/
+global.NmapParser = { analyze: parseAny, openReport: openReport, answerLocally: answerLocally, askAi: askAi, PROVIDERS: PROVIDERS, buildExploitation: buildExploitation };
+})(window);
+</script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useRef, useEffect, useDeferredValue } = React;
+const analyze = window.NmapParser.analyze;
+const openReport = window.NmapParser.openReport;
+const answerLocally = window.NmapParser.answerLocally;
+const askAi = window.NmapParser.askAi;
+const PROVIDERS = window.NmapParser.PROVIDERS;
+const buildExploitation = window.NmapParser.buildExploitation;
+function ExploitToggle({scriptId,title,cves,service,product}){const[o,setO]=useState(false);const ex=buildExploitation(scriptId||service||'',title||'',cves||[],service,product);
+  return <div style={{marginTop:8}}><button onClick={()=>setO(v=>!v)} style={{background:'none',border:'none',cursor:'pointer',color:'#ffffff',fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em',display:'inline-flex',alignItems:'center',gap:6}}><span style={{transform:o?'rotate(90deg)':'',transition:'.1s'}}>▶</span>🔧 Exploitation &amp; learning</button>{o&&<ExploitBlock ex={ex}/>}</div>;}
+
+/* Inline SVG charts — no external chart library, so this works offline too. */
+function DonutChart({data,size=176}){
+  const total=data.reduce((s,d)=>s+d.value,0);const R=70,r=45,cx=size/2,cy=size/2;
+  if(!total)return null;let a=-Math.PI/2;
+  const seg=data.map(d=>{const frac=d.value/total;const a2=a+frac*Math.PI*2;
+    const x1=cx+R*Math.cos(a),y1=cy+R*Math.sin(a),x2=cx+R*Math.cos(a2),y2=cy+R*Math.sin(a2);
+    const xi1=cx+r*Math.cos(a2),yi1=cy+r*Math.sin(a2),xi2=cx+r*Math.cos(a),yi2=cy+r*Math.sin(a);
+    const large=frac>0.5?1:0;const mid=(a+a2)/2;a=a2;
+    const path=`M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} L ${xi1} ${yi1} A ${r} ${r} 0 ${large} 0 ${xi2} ${yi2} Z`;
+    return {path,color:d.color,name:d.name,value:d.value,pct:Math.round(frac*100),lx:cx+((R+r)/2)*Math.cos(mid),ly:cy+((R+r)/2)*Math.sin(mid)};});
+  return <svg viewBox={`0 0 ${size} ${size}`} width="100%" height={size}>
+    {seg.map((s,i)=><path key={i} d={s.path} fill={s.color}><title>{s.name}: {s.value} ({s.pct}%)</title></path>)}
+    {seg.filter(s=>s.pct>=8).map((s,i)=><text key={i} x={s.lx} y={s.ly} fill="#080808" fontSize="11" fontWeight="700" textAnchor="middle" dominantBaseline="middle">{s.pct}%</text>)}
+  </svg>;
+}
+function HBarChart({data,height=224}){
+  if(!data.length)return null;const max=Math.max(...data.map(d=>d.cves),1);
+  const rowH=Math.min(28,(height-10)/data.length);const labelW=76,pad=8;
+  return <svg viewBox={`0 0 400 ${height}`} width="100%" height={height} preserveAspectRatio="none" style={{overflow:'visible'}}>
+    {data.map((d,i)=>{const y=i*rowH+2;const w=Math.max(2,(d.cves/max)*(400-labelW-pad-30));
+      return <g key={i}>
+        <text x={labelW-6} y={y+rowH/2} fill="#94a3b8" fontSize="11" textAnchor="end" dominantBaseline="middle">{d.name}</text>
+        <rect x={labelW} y={y+2} width={w} height={rowH-6} fill="#ffffff" rx="2"><title>{d.name}: {d.cves} CVEs</title></rect>
+        <text x={labelW+w+5} y={y+rowH/2} fill="#cbd5e1" fontSize="10" dominantBaseline="middle">{d.cves}</text>
+      </g>;})}
+  </svg>;
+}
+
+const SEV = {
+  CRITICAL:['#f43f5e','rgba(244,63,94,.15)'], HIGH:['#fb923c','rgba(251,146,60,.15)'],
+  MEDIUM:['#facc15','rgba(250,204,21,.15)'], LOW:['#ffffff','rgba(255,255,255,.15)'],
+  INFO:['#94a3b8','rgba(100,116,139,.15)'], UNRATED:['#64748b','rgba(71,85,105,.2)'],
+};
+const CONF = {
+  CONFIRMED:['#f43f5e','rgba(244,63,94,.15)'], POTENTIAL:['#facc15','rgba(250,204,21,.15)'],
+  INFORMATIONAL:['#ffffff','rgba(255,255,255,.15)'], UNKNOWN:['#94a3b8','rgba(100,116,139,.15)'],
+};
+function Badge({text,colors}){return <span className="badge" style={{color:colors[0],background:colors[1],border:'1px solid '+colors[0]+'55'}}>{text}</span>;}
+const SevBadge=({v})=><Badge text={v} colors={SEV[v]||SEV.UNRATED}/>;
+const ConfBadge=({v})=><Badge text={v==='INFORMATIONAL'?'INFO':v[0]+v.slice(1).toLowerCase()} colors={CONF[v]||CONF.UNKNOWN}/>;
+function StateBadge({s}){const l=s.toLowerCase();
+  const c=l.startsWith('open')?['#34d399','rgba(52,211,153,.15)']:l.includes('filtered')?['#fbbf24','rgba(251,191,36,.15)']:['#94a3b8','rgba(100,116,139,.2)'];
+  return <Badge text={s} colors={c}/>;}
+function Copy({text}){const[d,setD]=useState(false);
+  return <button className="btn" style={{padding:'4px 8px',fontSize:12}} onClick={async()=>{try{await navigator.clipboard.writeText(text);setD(true);setTimeout(()=>setD(false),1200);}catch(e){}}}>{d?'Copied':'Copy'}</button>;}
+function Empty({title,hint}){return <div style={{border:'1px dashed rgba(255,255,255,0.22)',borderRadius:12,padding:'56px 0',textAlign:'center',background:'rgba(11,17,28,.4)'}}>
+  <p style={{fontSize:14,fontWeight:500,color:'#cbd5e1',margin:0}}>{title}</p>{hint&&<p style={{fontSize:12,color:'#64748b',maxWidth:420,margin:'6px auto 0'}}>{hint}</p>}</div>;}
+
+/* ---------------- Upload ---------------- */
+/* ---------------- Space-themed landing intro ---------------- */
+const NW_TITLE='NIGHT WATCH';
+const NW_LOGO="__LOGO_URI__";
+function Wolf({size}){size=size||32;return <img src={NW_LOGO} width={size} height={size} alt="Night Watch" style={{borderRadius:6,objectFit:'cover',display:'block'}}/>;}
+function SpaceBg({variant}){
+  const count=variant==='hero'?140:90;
+  const stars=useMemo(()=>Array.from({length:count},()=>({top:Math.random()*100,left:Math.random()*100,size:Math.random()*2+0.5,delay:Math.random()*4,dur:Math.random()*3+2})),[count]);
+  return <div className={'nw-bg'+(variant==='app'?' nw-bg-dim':'')}>
+    <div className="nw-stars">{stars.map((s,i)=><span key={i} style={{top:s.top+'%',left:s.left+'%',width:s.size+'px',height:s.size+'px',animationDelay:s.delay+'s',animationDuration:s.dur+'s'}}/>)}</div>
+    <div className="nw-nebula nw-nebula-1"></div><div className="nw-nebula nw-nebula-2"></div>
+    <div className="nw-galaxy"></div><div className="nw-planet nw-planet-a"></div><div className="nw-planet nw-planet-b"></div><div className="nw-planet nw-planet-c"></div>
+    <div className="nw-shoot nw-shoot-1"></div><div className="nw-shoot nw-shoot-2"></div><div className="nw-shoot nw-shoot-3"></div>
+  </div>;
+}
+function Landing({onStart}){
+  const[typed,setTyped]=useState(0);
+  useEffect(()=>{if(typed>=NW_TITLE.length)return;const t=setTimeout(()=>setTyped(n=>n+1),140);return()=>clearTimeout(t);},[typed]);
+  const done=typed>=NW_TITLE.length;
+  return <div className="nw-space">
+    <SpaceBg variant="hero"/>
+    <section className="nw-hero-screen">
+      <div className="nw-badge" style={{width:64,height:64,borderRadius:18,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:24}}><Wolf size={42}/></div>
+      <p style={{margin:'0 0 12px',fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'.5em',color:'rgba(255,255,255,.8)'}}>Welcome to</p>
+      <h1 className="nw-type-title">{NW_TITLE.slice(0,typed).split('').map((ch,i)=><span key={i} style={{color:i>=6?'#ffffff':'#fff'}}>{ch===' '?' ':ch}</span>)}<span className="nw-caret">▋</span></h1>
+      <p style={{marginTop:16,maxWidth:420,fontSize:14,color:'#94a3b8',opacity:done?1:0,transition:'opacity .7s'}}>The watchtower for your network. It sees every open port, every service, every weakness.</p>
+      <div className={'nw-scroll-hint'+(done?' nw-scroll-show':'')}><span style={{fontSize:11,textTransform:'uppercase',letterSpacing:'.2em',color:'#64748b'}}>Scroll</span><span className="chev">⌄</span></div>
+    </section>
+    <section className="nw-start-screen">
+      <div style={{textAlign:'center'}}>
+        <h2 style={{margin:'0 0 8px',fontSize:24,fontWeight:700,color:'#fff'}}>Ready when you are.</h2>
+        <p style={{margin:'0 auto 32px',maxWidth:360,fontSize:14,color:'#94a3b8'}}>Feed Night Watch your Nmap scan and it will map the attack surface, flag the vulnerabilities, and brief you on every finding.</p>
+        <button className="nw-cta nw-cta-lg" onClick={onStart}><Wolf size={20}/> Let's start analyzing</button>
+      </div>
+    </section>
+  </div>;
+}
+
+function Upload({onAnalyze,error}){
+  const[file,setFile]=useState(null);const[paste,setPaste]=useState('');const[mode,setMode]=useState('file');
+  const[busy,setBusy]=useState(false);const[drag,setDrag]=useState(false);const[readErr,setReadErr]=useState('');const ref=useRef(null);
+  const read=f=>{setReadErr('');if(f.size>25*1024*1024){setFile(null);setReadErr('Choose a file smaller than 25 MB.');return;}const r=new FileReader();r.onload=()=>{const text=String(r.result||'');if(!text.trim()){setFile(null);setReadErr('This file is empty or could not be read as text.');return;}setFile({name:f.name,size:f.size,text});};r.onerror=()=>{setFile(null);setReadErr('Could not read this file. Choose another text export or paste the scan.');};r.readAsText(f);};
+  const run=()=>{const text=mode==='file'?(file&&file.text):paste;const name=mode==='file'?(file&&file.name)||'scan.txt':'pasted.txt';
+    if(!text||!text.trim())return;if(new Blob([text]).size>25*1024*1024){setReadErr('Pasted output is larger than 25 MB. Use a smaller scan file.');return;}setReadErr('');setBusy(true);setTimeout(()=>{if(onAnalyze(name,text)===false)setBusy(false);},30);};
+  const can=mode==='file'?!!file:paste.trim().length>0;
+  const tab=(m,label)=><button key={m} aria-pressed={mode===m} onClick={()=>setMode(m)} style={{flex:1,border:'none',borderRadius:8,padding:'8px',fontSize:13,fontWeight:500,cursor:'pointer',background:mode===m?'rgba(255,255,255,.15)':'transparent',color:mode===m?'#ffffff':'#94a3b8'}}>{label}</button>;
+  return <div className="nw-space" style={{position:'relative',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'48px 16px',overflow:'hidden'}}>
+    <SpaceBg variant="hero"/>
+    <div style={{position:'relative',zIndex:10,width:'100%',maxWidth:560}}>
+      <div style={{textAlign:'center',marginBottom:32}}>
+        <div className="nw-badge" style={{width:64,height:64,margin:'0 auto 20px',borderRadius:18,display:'flex',alignItems:'center',justifyContent:'center'}}><Wolf size={42}/></div>
+        <p style={{margin:'0 0 4px',fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'.4em',color:'rgba(255,255,255,.8)'}}>Ingest scan</p>
+        <h1 className="nw-title" style={{fontSize:48,fontWeight:900,margin:0,letterSpacing:'-.02em'}}>NIGHT<span style={{color:'#ffffff'}}> WATCH</span></h1>
+        <p style={{color:'#94a3b8',fontSize:14,marginTop:12,maxWidth:360,marginLeft:'auto',marginRight:'auto'}}>Drop your Nmap scan below to map the attack surface — parsed entirely in your browser.</p>
+      </div>
+      <div className="nw-card" style={{borderRadius:16,overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,borderBottom:'1px solid rgba(255,255,255,.15)',background:'rgba(5,8,15,.6)',padding:'10px 16px'}}>
+          <span style={{width:10,height:10,borderRadius:99,background:'rgba(244,63,94,.7)'}}></span><span style={{width:10,height:10,borderRadius:99,background:'rgba(250,204,21,.7)'}}></span><span style={{width:10,height:10,borderRadius:99,background:'rgba(52,211,153,.7)'}}></span>
+          <span style={{marginLeft:8,fontFamily:'monospace',fontSize:11,color:'#64748b'}}>nightwatch://ingest</span></div>
+        <div style={{padding:6}}><div style={{display:'flex',gap:4,background:'rgba(5,8,15,.4)',borderRadius:10,padding:4}}>{tab('file','Upload file')}{tab('paste','Paste output')}</div></div>
+        <div style={{padding:'12px 20px 20px'}}>
+          {mode==='file'?(file?
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',border:'1px solid rgba(255,255,255,.25)',borderRadius:12,background:'rgba(5,8,15,.5)',padding:'12px 16px'}}>
+              <div><p style={{margin:0,fontSize:14,fontWeight:500,color:'#fff'}}>{file.name}</p>
+              <p style={{margin:0,fontSize:12,color:'#64748b'}}>{(file.size/1024).toFixed(1)} KB · ready to analyze</p></div>
+              <button className="btn" style={{padding:'4px 8px'}} onClick={()=>setFile(null)}>✕</button></div>
+            :<div className={'nw-drop'+(drag?' nw-drop-active':'')} role="button" tabIndex={0} aria-label="Choose an Nmap scan file" onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();ref.current.click();}}} onClick={()=>ref.current.click()} onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)}
+               onDrop={e=>{e.preventDefault();setDrag(false);const f=e.dataTransfer.files[0];if(f)read(f);}}
+               style={{borderRadius:12,padding:'48px 0',textAlign:'center',cursor:'pointer'}}>
+              <div className="nw-ring" style={{width:56,height:56,margin:'0 auto 12px',borderRadius:99,display:'flex',alignItems:'center',justifyContent:'center',fontSize:24}}>⬆️</div>
+              <p style={{margin:0,fontSize:14,color:'#cbd5e1'}}>Drop Nmap scan here</p>
+              <p style={{margin:'4px 0 0',fontSize:12,color:'#64748b'}}>or click to browse</p>
+              <input ref={ref} type="file" accept=".txt,.log,.nmap,.gnmap,.xml,.out" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f)read(f);e.currentTarget.value='';}}/>
+            </div>)
+            :<textarea className="input" style={{height:200,resize:'none',fontFamily:'monospace',fontSize:12,background:'rgba(5,8,15,.5)',borderColor:'rgba(255,255,255,.2)'}} placeholder="Paste raw Nmap output here…" value={paste} onChange={e=>setPaste(e.target.value)}/>}
+          <button className="nw-cta" style={{width:'100%',marginTop:20}} disabled={!can||busy} onClick={run}>{busy?'Analyzing…':<span style={{display:'inline-flex',alignItems:'center',gap:8}}><Wolf size={18}/> Let's start analyzing</span>}</button>
+          {busy&&<p role="status" aria-live="polite" style={{fontSize:12,color:'#94a3b8',textAlign:'center'}}>Analyzing locally… larger scans can take a few seconds.</p>}
+          <p style={{marginTop:12,textAlign:'center',fontSize:11,color:'#64748b'}}>Normal, grepable, or XML output · up to 25 MB</p>
+          {(error||readErr)&&<div role="alert" style={{marginTop:12,border:'1px solid #f43f5e66',background:'rgba(244,63,94,.1)',color:'#f43f5e',borderRadius:8,padding:'8px 12px',fontSize:13}}>{readErr||error}</div>}
+        </div>
+      </div>
+      <p style={{marginTop:24,fontSize:12,color:'#64748b',textAlign:'center'}}>🛡️ Scan parsing stays in this browser. Optional AI mode can send scan context to a provider after you enable sharing.</p>
+    </div>
+  </div>;
+}
+
+/* ---------------- small helpers ---------------- */
+function Stat({label,value,color}){return <div className="card" style={{padding:16}}>
+  <p style={{margin:0,fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em',color:'#94a3b8'}}>{label}</p>
+  <p style={{margin:'8px 0 0',fontSize:30,fontWeight:700,color:color||'#fff'}}>{value}</p></div>;}
+function Meter({label,value,max,color}){const pct=max>0?Math.max(2,Math.round(value/max*100)):0;
+  return <div><div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:4}}><span style={{color:'#cbd5e1'}}>{label}</span><span style={{color:'#94a3b8'}}>{value}</span></div>
+  <div style={{height:10,borderRadius:99,background:'#161616',overflow:'hidden'}}><div style={{height:'100%',width:pct+'%',background:color,borderRadius:99}}/></div></div>;}
+
+/* ---------------- Tabs ---------------- */
+function Overview({scan}){const s=scan.stats,m=scan.scan,h=scan.hosts[0];
+  const conf=[['Confirmed',s.confirmed,'#f43f5e'],['Potential',s.potential,'#facc15'],['Informational',s.informational,'#ffffff']].filter(d=>d[1]>0).map(d=>({name:d[0],value:d[1],color:d[2]}));
+  const bysvc=scan.vulnerabilities.filter(v=>v.confidence==='POTENTIAL').map(v=>({name:(v.service||v.port||'?')+(v.port?':'+v.port:''),cves:v.cves.length})).sort((a,b)=>b.cves-a.cves).slice(0,8);
+  const maxS=Math.max(s.openPorts,s.confirmed,s.potential,s.informational,1);
+  const F=({k,v})=><div><dt style={{fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em',color:'#64748b'}}>{k}</dt><dd style={{margin:'2px 0 0',fontSize:14,color:'#e2e8f0'}}>{v||'—'}</dd></div>;
+  return <div style={{display:'flex',flexDirection:'column',gap:24}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:12}}>
+      <Stat label="Hosts Up" value={s.hostsUp} color="#34d399"/><Stat label="Open Ports" value={s.openPorts} color="#ffffff"/>
+      <Stat label="Services" value={s.services}/><Stat label="Confirmed" value={s.confirmed} color="#f43f5e"/>
+      <Stat label="Potential" value={s.potential} color="#facc15"/><Stat label="Informational" value={s.informational} color="#ffffff"/></div>
+    <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:24}} className="respgrid">
+      <div className="card" style={{padding:20}}><h2 style={{fontSize:18,margin:'0 0 12px'}}>Scan Overview</h2>
+        <dl style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px 24px',margin:0}}>
+          <F k="Target" v={h&&h.ip}/><F k="Nmap version" v={m.nmapVersion}/><F k="Started" v={m.startTime}/><F k="Duration" v={m.duration}/>
+          <F k="OS detection" v={h&&h.os}/><F k="Hostname" v={h&&h.hostnames.join(', ')}/><F k="Open ports" v={String(s.openPorts)}/>
+          <F k="Closed ports" v={s.closedPorts?s.closedPorts.toLocaleString():'—'}/><F k="Filtered" v={s.filteredPorts||'—'}/><F k="Hosts" v={String(s.hostsTotal)}/></dl>
+        {m.command&&<div style={{marginTop:16,border:'1px solid rgba(255,255,255,0.22)',background:'#000000',borderRadius:8,padding:12,overflowX:'auto'}}><code style={{fontSize:12,color:'#cbd5e1',whiteSpace:'pre'}}>{m.command}</code></div>}</div>
+      <div className="card" style={{padding:20}}><h2 style={{fontSize:18,margin:'0 0 12px'}}>Findings by confidence</h2>
+        {conf.length?<div style={{height:176}}><DonutChart data={conf}/></div>:<p style={{color:'#64748b',textAlign:'center',padding:'32px 0'}}>No findings.</p>}
+        <div style={{marginTop:8}}>{conf.map(d=><div key={d.name} style={{display:'flex',justifyContent:'space-between',fontSize:12,padding:'2px 0'}}><span style={{color:'#cbd5e1'}}><span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:d.color,marginRight:8}}/>{d.name}</span><span style={{color:'#94a3b8'}}>{d.value}</span></div>)}</div></div></div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}} className="respgrid">
+      <div className="card" style={{padding:20}}><h2 style={{fontSize:18,margin:'0 0 16px'}}>Attack surface</h2>
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+          <Meter label="Open ports" value={s.openPorts} max={maxS} color="#ffffff"/>
+          <Meter label="Confirmed findings" value={s.confirmed} max={maxS} color="#f43f5e"/>
+          <Meter label="Potential findings" value={s.potential} max={maxS} color="#facc15"/>
+          <Meter label="Informational" value={s.informational} max={maxS} color="#64748b"/></div></div>
+      <div className="card" style={{padding:20}}><h2 style={{fontSize:18,margin:'0 0 12px'}}>CVE exposure by service</h2>
+        {bysvc.length?<div style={{height:224}}><HBarChart data={bysvc}/></div>:<p style={{color:'#64748b',height:224,display:'flex',alignItems:'center',justifyContent:'center'}}>No version-associated CVEs.</p>}</div></div>
+  </div>;
+}
+
+function Hosts({scan}){const[sel,setSel]=useState(null);const hosts=scan.hosts.filter(h=>!h.ip.startsWith('('));
+  const openFor=ip=>scan.ports.filter(p=>p.host===ip&&p.state.includes('open'));
+  if(!hosts.length)return <Empty title="No hosts parsed"/>;
+  return <div style={{display:'grid',gridTemplateColumns:sel?'2fr 1fr':'1fr',gap:16}} className="respgrid">
+    <div className="card" style={{overflow:'hidden'}}><div style={{overflowX:'auto'}}><table>
+      <thead style={{borderBottom:'1px solid rgba(255,255,255,0.22)',background:'rgba(11,17,28,.6)'}}><tr><th>Host</th><th>Status</th><th>Latency</th><th>Hostname</th><th>OS</th><th>MAC/Vendor</th><th>Open</th></tr></thead>
+      <tbody>{hosts.map(h=><tr key={h.ip} onClick={()=>setSel(h)} style={{cursor:'pointer',borderTop:'1px solid rgba(255,255,255,0.22)99'}}>
+        <td style={{fontFamily:'monospace',color:'#fff',fontWeight:500}}>{h.ip}</td>
+        <td><Badge text={h.status||'?'} colors={h.status==='up'?['#34d399','rgba(52,211,153,.15)']:['#94a3b8','rgba(100,116,139,.2)']}/></td>
+        <td style={{color:'#94a3b8'}}>{h.latency||'—'}</td><td>{h.hostnames.join(', ')||'—'}</td><td style={{color:'#cbd5e1'}}>{h.os||'—'}</td>
+        <td style={{color:'#94a3b8'}}>{h.mac?h.mac+(h.vendor?' ('+h.vendor+')':''):'—'}</td><td style={{fontFamily:'monospace',color:'#ffffff'}}>{openFor(h.ip).length}</td></tr>)}</tbody></table></div></div>
+    {sel&&<div className="card" style={{padding:16,height:'fit-content'}}><div style={{display:'flex',justifyContent:'space-between'}}><h3 style={{fontFamily:'monospace',margin:0}}>{sel.ip}</h3><button className="btn" style={{padding:'4px 8px'}} onClick={()=>setSel(null)}>✕</button></div>
+      <dl style={{fontSize:13,margin:'12px 0 0'}}>{[['Status',sel.status],['Latency',sel.latency],['Hostnames',sel.hostnames.join(', ')],['OS',sel.os],['MAC',sel.mac],['Vendor',sel.vendor],['Uptime',sel.uptime],['Distance',sel.distance]].map(([k,v])=><div key={k} style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}><dt style={{color:'#64748b'}}>{k}</dt><dd style={{margin:0,color:'#e2e8f0',textAlign:'right'}}>{v||'—'}</dd></div>)}</dl>
+      <p style={{fontSize:11,fontWeight:600,textTransform:'uppercase',color:'#64748b',margin:'16px 0 8px'}}>Open ports ({openFor(sel.ip).length})</p>
+      <div style={{display:'flex',flexWrap:'wrap',gap:6}}>{openFor(sel.ip).map(p=><span key={p.port} className="badge" style={{textTransform:'none',background:'#161616',color:'#cbd5e1'}}>{p.port} {p.service}</span>)}</div></div>}
+  </div>;
+}
+
+function Ports({scan}){const[q,setQ]=useState('');const dq=useDeferredValue(q);const[filter,setFilter]=useState('open');const[sel,setSel]=useState(null);const[limit,setLimit]=useState(100);const[sort,setSort]=useState({k:'port',d:1});
+  const rows=useMemo(()=>{let r=scan.ports.slice();if(filter!=='all')r=r.filter(p=>p.state.includes(filter));
+    if(dq.trim()){const t=dq.toLowerCase();r=r.filter(p=>[p.port,p.service,p.product,p.version,p.extra,p.protocol].filter(Boolean).join(' ').toLowerCase().includes(t));}
+    r.sort((a,b)=>{const k=sort.k;const av=k==='port'?a.port:(a[k]||'').toString().toLowerCase();const bv=k==='port'?b.port:(b[k]||'').toString().toLowerCase();return av<bv?-sort.d:av>bv?sort.d:0;});return r;},[scan.ports,dq,filter,sort]);
+  const cnt={all:scan.ports.length,open:scan.ports.filter(p=>p.state.includes('open')).length,closed:scan.ports.filter(p=>p.state==='closed').length,filtered:scan.ports.filter(p=>p.state.includes('filtered')).length};
+  const tsort=k=>setSort(s=>s.k===k?{k,d:-s.d}:{k,d:1});
+  if(!scan.ports.length)return <Empty title="No ports parsed"/>;
+  return <div style={{display:'grid',gridTemplateColumns:sel?'2fr 1fr':'1fr',gap:16}} className="respgrid">
+    <div><div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:12}}>
+      <input className="input" style={{width:256}} placeholder="Search ports…" value={q} onChange={e=>setQ(e.target.value)}/>
+      <div style={{display:'flex',gap:4}}>{['all','open','closed','filtered'].map(f=><button key={f} onClick={()=>setFilter(f)} style={{border:'none',borderRadius:6,padding:'6px 10px',fontSize:12,fontWeight:500,textTransform:'capitalize',cursor:'pointer',background:filter===f?'#ffffff':'#161616',color:filter===f?'#000000':'#cbd5e1'}}>{f} ({cnt[f]})</button>)}</div></div>
+      <div className="card" style={{overflow:'hidden'}}><div style={{overflowX:'auto'}}><table>
+        <thead style={{borderBottom:'1px solid rgba(255,255,255,0.22)',background:'rgba(11,17,28,.6)'}}><tr>{[['Port','port'],['State','state'],['Service','service'],['Product','product']].map(([l,k])=><th key={k} style={{cursor:'pointer'}} onClick={()=>tsort(k)}>{l}{sort.k===k?(sort.d===1?' ▲':' ▼'):''}</th>)}<th>Version</th></tr></thead>
+        <tbody>{rows.slice(0,limit).map(p=><tr key={p.host+p.port+p.protocol} tabIndex={0} aria-label={'Open details for '+p.port+'/'+p.protocol+' on '+p.host} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSel(p);}}} onClick={()=>setSel(p)} style={{cursor:'pointer',borderTop:'1px solid rgba(255,255,255,0.22)99',background:sel&&sel.port===p.port&&sel.host===p.host?'#161616':''}}>
+          <td style={{fontFamily:'monospace',color:'#fff',fontWeight:500}}>{p.port}<span style={{color:'#64748b'}}>/{p.protocol}</span></td>
+          <td><StateBadge s={p.state}/></td><td style={{color:'#ffffff'}}>{p.service||'—'}</td><td>{p.product||'—'}</td><td style={{color:'#94a3b8'}}>{p.version||'—'}</td></tr>)}
+          {!rows.length&&<tr><td colSpan={5} style={{textAlign:'center',color:'#64748b',padding:32}}>No ports match.</td></tr>}</tbody></table></div></div>{rows.length>limit&&<button className="btn" style={{width:'100%',justifyContent:'center',marginTop:8}} onClick={()=>setLimit(n=>n+100)}>Show next 100 ({rows.length-limit} remaining)</button>}</div>
+    {sel&&<PortDetail port={sel} scripts={scan.nseScripts.filter(s=>s.host===sel.host&&s.port===sel.port)} onClose={()=>setSel(null)}/>}
+  </div>;
+}
+function PortDetail({port,scripts,onClose}){return <div className="card" style={{padding:16,height:'fit-content'}}>
+  <div style={{display:'flex',justifyContent:'space-between'}}><div><h3 style={{fontFamily:'monospace',margin:0}}>{port.port}/{port.protocol}</h3><p style={{fontSize:12,color:'#94a3b8',margin:0}}>on {port.host}</p></div><button className="btn" style={{padding:'4px 8px'}} onClick={onClose}>✕</button></div>
+  <dl style={{fontSize:13,margin:'12px 0 0'}}>{[['State',port.state],['Service',port.service],['Product',port.product],['Version',port.version],['Extra',port.extra]].map(([k,v])=><div key={k} style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}><dt style={{color:'#64748b'}}>{k}</dt><dd style={{margin:0,color:'#e2e8f0',textAlign:'right'}}>{v||'—'}</dd></div>)}</dl>
+  {scripts.length>0&&<div style={{marginTop:16}}><p style={{fontSize:11,fontWeight:600,textTransform:'uppercase',color:'#64748b',margin:'0 0 8px'}}>NSE scripts ({scripts.length})</p>
+    {scripts.map(s=><details key={s.id} style={{border:'1px solid rgba(255,255,255,0.22)',borderRadius:8,background:'#080808',marginBottom:8}}>
+      <summary style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',fontSize:12}}><span style={{fontFamily:'monospace',color:'#ffffff'}}>{s.id}</span>{s.state&&<Badge text={s.state} colors={/NOT/i.test(s.state)?['#34d399','rgba(52,211,153,.15)']:['#f43f5e','rgba(244,63,94,.15)']}/>}</summary>
+      <div style={{borderTop:'1px solid rgba(255,255,255,0.22)',padding:8}}><div style={{textAlign:'right',marginBottom:4}}><Copy text={s.output}/></div>
+      <pre style={{maxHeight:280,overflow:'auto',whiteSpace:'pre-wrap',wordBreak:'break-word',background:'#000000',padding:8,borderRadius:4,fontFamily:'monospace',fontSize:11,color:'#cbd5e1'}}>{s.output||'(no output)'}</pre></div></details>)}</div>}
+  {port.state.indexOf('open')===0&&<ExploitToggle scriptId={(scripts[0]&&scripts[0].id)||port.service} title={port.product||port.service||('port '+port.port)} cves={scripts.flatMap(s=>s.cves)} service={port.service} product={[port.product,port.version].filter(Boolean).join(' ')||undefined}/>}
+</div>;}
+
+function Services({scan}){if(!scan.services.length)return <Empty title="No services detected"/>;
+  return <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:16}}>{scan.services.map(g=><div key={g.name} className="card" style={{padding:16}}>
+    <div style={{display:'flex',justifyContent:'space-between',marginBottom:12}}><h3 style={{margin:0,fontSize:16}}>{g.name}</h3><Badge text={g.ports.length+' port'+(g.ports.length>1?'s':'')} colors={['#ffffff','rgba(255,255,255,.15)']}/></div>
+    {g.ports.map(p=><div key={p.port+p.protocol} style={{border:'1px solid rgba(255,255,255,0.22)',borderRadius:8,background:'#080808',padding:10,marginBottom:8}}>
+      <div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontFamily:'monospace',fontSize:13,fontWeight:500}}>{p.port}/{p.protocol}</span>{p.scripts.length>0&&<Badge text={p.scripts.length+' NSE'} colors={['#94a3b8','#242424']}/>}</div>
+      {(p.product||p.version)&&<p style={{margin:'4px 0 0',fontSize:12,color:'#94a3b8'}}>{[p.product,p.version].filter(Boolean).join(' ')}</p>}
+      {p.extra&&<p style={{margin:'2px 0 0',fontSize:11,color:'#64748b'}}>{p.extra}</p>}</div>)}
+    <ExploitToggle scriptId={(g.ports[0]&&g.ports[0].scripts[0])||g.name} title={(g.ports[0]&&g.ports[0].product)||g.name} service={g.name} product={[g.ports[0]&&g.ports[0].product,g.ports[0]&&g.ports[0].version].filter(Boolean).join(' ')||undefined}/>
+    </div>)}</div>;
+}
+
+function Vulns({scan}){const[conf,setConf]=useState('ALL');const[open,setOpen]=useState({});const[limit,setLimit]=useState(100);
+  const rows=conf==='ALL'?scan.vulnerabilities:scan.vulnerabilities.filter(v=>v.confidence===conf);
+  const sourceOutputs=useMemo(()=>new Map(scan.nseScripts.map(s=>[s.host+':'+(s.port||'')+':NSE: '+s.id,s.output])),[scan.nseScripts]);
+  const cnt={ALL:scan.vulnerabilities.length,CONFIRMED:scan.vulnerabilities.filter(v=>v.confidence==='CONFIRMED').length,POTENTIAL:scan.vulnerabilities.filter(v=>v.confidence==='POTENTIAL').length};
+  if(!scan.vulnerabilities.length)return <Empty title="No vulnerabilities parsed" hint="No NSE vulnerability states or version-associated CVEs were found."/>;
+  return <div><div style={{border:'1px solid #f59e0b4d',background:'rgba(245,158,11,.05)',color:'#fcd34dcc',borderRadius:8,padding:'8px 12px',fontSize:12,marginBottom:16}}>
+    <b>Confidence matters.</b> “Confirmed” = an NSE script reported a VULNERABLE state. “Potential” = a CVE associated with a detected version — a lead to verify, not proof.</div>
+    <div style={{display:'flex',gap:4,marginBottom:12}}>{['ALL','CONFIRMED','POTENTIAL'].map(c=><button key={c} onClick={()=>setConf(c)} style={{border:'none',borderRadius:6,padding:'6px 10px',fontSize:12,fontWeight:500,textTransform:'capitalize',cursor:'pointer',background:conf===c?'#ffffff':'#161616',color:conf===c?'#000000':'#cbd5e1'}}>{c.toLowerCase()} ({cnt[c]})</button>)}</div>
+    <div style={{display:'flex',flexDirection:'column',gap:12}}>{rows.slice(0,limit).map(v=>{const isC=v.confidence==='CONFIRMED';const o=open[v.id];const source=sourceOutputs.get(v.host+':'+(v.port||'')+':'+v.source);
+      return <div key={v.id} className="card" style={{overflow:'hidden',borderLeft:'4px solid '+(isC?'#f43f5e':'#facc15')}}>
+        <button onClick={()=>setOpen(s=>({...s,[v.id]:!s[v.id]}))} style={{width:'100%',display:'flex',gap:12,alignItems:'center',padding:16,background:'none',border:'none',cursor:'pointer',textAlign:'left',color:'#e2e8f0'}}>
+          <span style={{color:'#64748b',transform:o?'rotate(90deg)':'',transition:'.1s'}}>▶</span>
+          <div style={{flex:1,minWidth:0}}><div style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}><span style={{fontWeight:500,color:'#fff'}}>{v.title}</span><ConfBadge v={v.confidence}/><SevBadge v={v.severity}/>{v.severitySource==='heuristic'&&<Badge text="heuristic" colors={['#94a3b8','#242424']}/>}</div>
+          <p style={{margin:'2px 0 0',fontSize:12,color:'#94a3b8',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{v.host}{v.port?':'+v.port+'/'+v.protocol:''} · {v.source}{v.cves.length?' · '+v.cves.length+' CVEs':''}</p></div></button>
+        {o&&<div style={{borderTop:'1px solid rgba(255,255,255,0.22)',padding:16}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}} className="respgrid">
+            <div><p style={{fontSize:11,fontWeight:600,textTransform:'uppercase',color:'#64748b',margin:0}}>Evidence (from scan)</p>
+              <pre style={{marginTop:4,maxHeight:192,overflow:'auto',whiteSpace:'pre-wrap',background:'#000000',padding:10,borderRadius:4,fontFamily:'monospace',fontSize:11,color:'#cbd5e1'}}>{v.evidence}</pre>{source&&<details style={{marginTop:8}}><summary style={{fontSize:12,color:'#fff'}}>View complete NSE source output</summary><pre style={{marginTop:4,maxHeight:256,overflow:'auto',whiteSpace:'pre-wrap',wordBreak:'break-word',background:'#000',padding:8,fontFamily:'monospace',fontSize:11}}>{source}</pre></details>}</div>
+            <div><p style={{fontSize:11,fontWeight:600,textTransform:'uppercase',color:'#64748b',margin:0}}>Analysis</p><p style={{marginTop:4,fontSize:13,lineHeight:1.6,color:'#cbd5e1'}}>{v.explanation}</p></div></div>
+          {v.cves.length>0&&<div style={{marginTop:16}}><p style={{fontSize:11,fontWeight:600,textTransform:'uppercase',color:'#64748b',margin:0}}>Associated CVEs</p>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:8}}>{v.cves.slice(0,40).map(c=><a key={c.id} href={c.url||'https://nvd.nist.gov/vuln/detail/'+c.id} target="_blank" rel="noreferrer" className="badge" style={{textTransform:'none',textDecoration:'none',color:c.exploit?'#f43f5e':'#cbd5e1',background:c.exploit?'rgba(244,63,94,.1)':'#161616',border:'1px solid '+(c.exploit?'#f43f5e66':'rgba(255,255,255,0.22)')}}>{c.id}{c.score!==undefined?' ·'+c.score:''}{c.exploit?' ⚠':''}</a>)}{v.cves.length>40&&<span style={{fontSize:12,color:'#64748b'}}>+{v.cves.length-40} more</span>}</div></div>}
+          {v.exploitation&&<ExploitBlock ex={v.exploitation}/>}
+        </div>}</div>;})}</div>{rows.length>limit&&<button className="btn" style={{width:'100%',justifyContent:'center',marginTop:12}} onClick={()=>setLimit(n=>n+100)}>Show next 100 ({rows.length-limit} remaining)</button>}</div>;
+}
+function LinkBadge({r}){return <a href={r.url} target="_blank" rel="noreferrer" className="badge" style={{textTransform:'none',textDecoration:'none',background:'#161616',color:'#cbd5e1',border:'1px solid rgba(255,255,255,0.22)'}}>{r.label} ↗</a>;}
+function ExploitBlock({ex}){const H=({children})=><p style={{margin:'0 0 6px',fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em',color:'#64748b'}}>{children}</p>;
+  return <div style={{marginTop:16,border:'1px solid rgba(255,255,255,.25)',background:'rgba(255,255,255,.04)',borderRadius:8,padding:16}}>
+    <p style={{margin:'0 0 8px',fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em',color:'#ffffff'}}>🔧 Exploitation &amp; learning</p>
+    <p style={{margin:'0 0 12px',fontSize:13,lineHeight:1.6,color:'#cbd5e1'}}>{ex.summary}</p>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}} className="respgrid">
+      <div><H>Tools that target this</H><ul style={{margin:0,padding:0,listStyle:'none'}}>{ex.tools.map((t,i)=><li key={i} style={{fontFamily:'monospace',fontSize:12,color:'#cbd5e1',padding:'1px 0'}}>• {t}</li>)}</ul></div>
+      <div><H>Verify first</H><ul style={{margin:0,padding:0,listStyle:'none'}}>{ex.verify.map((t,i)=><li key={i} style={{fontSize:12,color:'#94a3b8',padding:'1px 0'}}>• {t}</li>)}</ul></div></div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginTop:12}} className="respgrid">
+      <div><H>References</H><div style={{display:'flex',flexWrap:'wrap',gap:6}}>{ex.references.map((r,i)=><LinkBadge key={i} r={r}/>)}</div></div>
+      <div><H>Learn how (videos &amp; guides)</H><div style={{display:'flex',flexWrap:'wrap',gap:6}}>{ex.learning.map((r,i)=><LinkBadge key={i} r={r}/>)}</div></div></div>
+    <p style={{margin:'12px 0 0',fontSize:11,color:'#64748b'}}>Educational references only — no attack commands. Use only against systems you are authorized to test.</p>
+  </div>;
+}
+
+function Web({scan}){if(!scan.webFindings.length)return <Empty title="No web services found"/>;const host=scan.hosts[0]&&scan.hosts[0].ip||'';
+  return <div style={{display:'flex',flexDirection:'column',gap:16}}>{scan.webFindings.map(w=>{const scheme=[443,8443].includes(w.port)?'https':'http';const base=scheme+'://'+host+([80,443].includes(w.port)?'':':'+w.port);
+    const Block=({title,children})=><div><p style={{fontSize:11,fontWeight:600,textTransform:'uppercase',color:'#64748b',margin:'0 0 6px'}}>{title}</p>{children}</div>;
+    return <div key={w.port} className="card" style={{padding:20}}>
+      <div style={{display:'flex',gap:12,alignItems:'center',marginBottom:16}}><div style={{width:40,height:40,borderRadius:8,background:'rgba(255,255,255,.1)',color:'#ffffff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🌐</div>
+        <div><h3 style={{margin:0,fontSize:16}}>{w.port}/{w.protocol} · {w.server||'HTTP service'}</h3><p style={{margin:0,fontSize:12,color:'#94a3b8'}}>{base}</p></div></div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}} className="respgrid">
+        {w.directories.length>0&&<Block title={'Discovered directories ('+w.directories.length+')'}><div style={{display:'flex',flexWrap:'wrap',gap:6}}>{w.directories.map(d=><a key={d} href={base+d} target="_blank" rel="noreferrer" className="badge" style={{textTransform:'none',textDecoration:'none',background:'#161616',color:'#cbd5e1',fontFamily:'monospace'}}>{d}</a>)}</div></Block>}
+        {w.technologies.length>0&&<Block title="Technologies"><div style={{display:'flex',flexWrap:'wrap',gap:6}}>{w.technologies.map(t=><span key={t} className="badge" style={{textTransform:'none',background:'#161616',color:'#cbd5e1'}}>{t}</span>)}</div></Block>}
+        {w.methods.length>0&&<Block title="HTTP methods"><div style={{display:'flex',flexWrap:'wrap',gap:6}}>{w.methods.map(m=><Badge key={m} text={m} colors={/TRACE|PUT|DELETE/i.test(m)?['#facc15','rgba(250,204,21,.15)']:['#cbd5e1','#161616']}/>)}</div></Block>}
+        {Object.keys(w.headers).length>0&&<Block title="Server headers"><dl style={{fontSize:12,margin:0}}>{Object.entries(w.headers).map(([k,v])=><div key={k} style={{display:'flex',gap:8}}><dt style={{color:'#64748b',fontFamily:'monospace'}}>{k}:</dt><dd style={{margin:0,color:'#cbd5e1',fontFamily:'monospace',overflow:'hidden',textOverflow:'ellipsis'}}>{v}</dd></div>)}</dl></Block>}
+        {w.auth.length>0&&<Block title="Authentication points"><ul style={{margin:0,paddingLeft:16,fontSize:12,color:'#cbd5e1'}}>{w.auth.map((a,i)=><li key={i} style={{fontFamily:'monospace'}}>{a}</li>)}</ul></Block>}
+        {w.tls.length>0&&<Block title="SSL/TLS findings"><ul style={{margin:0,paddingLeft:16,fontSize:12,color:'#facc15'}}>{w.tls.map((t,i)=><li key={i}>{t}</li>)}</ul></Block>}
+        {w.securityNotes.length>0&&<Block title="Notes"><ul style={{margin:0,paddingLeft:16,fontSize:12,color:'#94a3b8'}}>{w.securityNotes.map((n,i)=><li key={i}>{n}</li>)}</ul></Block>}
+      </div>
+      <ExploitToggle scriptId={(w.scripts&&w.scripts[0])||'http'} title={w.server||'web server'} service="http" product={w.server}/>
+      </div>;})}</div>;
+}
+
+function Nse({scan}){const[q,setQ]=useState('');const dq=useDeferredValue(q);const[limit,setLimit]=useState(100);const scripts=useMemo(()=>{if(!dq.trim())return scan.nseScripts;const t=dq.toLowerCase();return scan.nseScripts.filter(s=>(s.id+' '+s.host+' '+(s.port||'')+' '+(s.state||'')+' '+s.output).toLowerCase().includes(t));},[scan.nseScripts,dq]);
+  if(!scan.nseScripts.length)return <Empty title="No NSE scripts found"/>;
+  const col=s=>!s?['#94a3b8','#242424']:/NOT VULNERABLE/i.test(s)?['#34d399','rgba(52,211,153,.15)']:/LIKELY/i.test(s)?['#facc15','rgba(250,204,21,.15)']:/VULNERABLE/i.test(s)?['#f43f5e','rgba(244,63,94,.15)']:['#94a3b8','#242424'];
+  return <div><div style={{display:'flex',justifyContent:'space-between',marginBottom:12}}><input className="input" style={{width:288}} placeholder="Search scripts & output…" value={q} onChange={e=>setQ(e.target.value)}/><span style={{fontSize:12,color:'#64748b'}}>{scripts.length} of {scan.nseScripts.length}</span></div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(min(360px,100%),1fr))',gap:12}}>{scripts.slice(0,limit).map((s,i)=><div key={s.id+s.host+s.port+i} className="card" style={{overflow:'hidden'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'1px solid rgba(255,255,255,0.22)',background:'rgba(11,17,28,.5)',padding:'8px 12px'}}><span style={{fontFamily:'monospace',fontSize:13,fontWeight:500,color:'#ffffff'}}>{s.id}</span>{s.state&&<Badge text={s.state} colors={col(s.state)}/>}</div>
+      <div style={{padding:'8px 12px'}}><div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#64748b',marginBottom:6}}><span>{s.host}{s.port?':'+s.port+'/'+s.protocol:' · '+s.scope}{s.cves.length?' · '+s.cves.length+' CVEs':''}</span><Copy text={s.output}/></div>
+      <pre style={{maxHeight:256,overflow:'auto',whiteSpace:'pre-wrap',wordBreak:'break-word',background:'#000000',padding:8,borderRadius:4,fontFamily:'monospace',fontSize:11,color:'#cbd5e1'}}>{s.output||'(no output)'}</pre>
+      <ExploitToggle scriptId={s.id} title={s.id} cves={s.cves}/></div></div>)}</div>{scripts.length>limit&&<button className="btn" style={{width:'100%',justifyContent:'center',marginTop:12}} onClick={()=>setLimit(n=>n+100)}>Show next 100 ({scripts.length-limit} remaining)</button>}</div>;
+}
+
+function OsNet({scan}){if(!scan.osNetwork.length)return <Empty title="No OS/network data"/>;
+  const Row=({k,v})=><div style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}><dt style={{color:'#64748b'}}>{k}</dt><dd style={{margin:0,color:'#e2e8f0',textAlign:'right'}}>{v||'—'}</dd></div>;
+  return <div style={{display:'flex',flexDirection:'column',gap:16}}>{scan.osNetwork.map(o=><div key={o.host} className="card" style={{padding:20}}>
+    <h3 style={{fontFamily:'monospace',margin:'0 0 16px',fontSize:18}}>{o.host}</h3>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}} className="respgrid">
+      <div><p style={{fontSize:11,fontWeight:600,textTransform:'uppercase',color:'#64748b',margin:'0 0 8px'}}>OS &amp; Detection</p><dl style={{fontSize:13,margin:0}}>
+        <Row k="OS details" v={o.os}/><Row k="OS family" v={o.osFamily}/><Row k="MAC" v={o.mac}/><Row k="Vendor" v={o.vendor}/><Row k="Latency" v={o.latency}/><Row k="Uptime" v={o.uptime}/><Row k="Distance" v={o.distance}/><Row k="TCP sequence" v={o.tcpSequence}/><Row k="IP ID sequence" v={o.ipIdSequence}/></dl>
+        {o.osCpe.length>0&&<div style={{marginTop:12}}><p style={{fontSize:11,fontWeight:600,textTransform:'uppercase',color:'#64748b',margin:'0 0 4px'}}>OS CPE</p><div style={{display:'flex',flexWrap:'wrap',gap:6}}>{o.osCpe.map(c=><span key={c} className="badge" style={{textTransform:'none',background:'#161616',color:'#94a3b8',fontFamily:'monospace',fontSize:10}}>{c}</span>)}</div></div>}</div>
+      <div><p style={{fontSize:11,fontWeight:600,textTransform:'uppercase',color:'#64748b',margin:'0 0 8px'}}>Traceroute</p>
+        {o.traceroute.length?<div className="card" style={{overflow:'hidden'}}><table><thead style={{background:'rgba(11,17,28,.6)'}}><tr><th>Hop</th><th>RTT</th><th>Address</th><th>Hostname</th></tr></thead>
+          <tbody>{o.traceroute.map(h=><tr key={h.hop} style={{borderTop:'1px solid rgba(255,255,255,0.22)99'}}><td style={{fontFamily:'monospace'}}>{h.hop}</td><td style={{color:'#94a3b8'}}>{h.rtt||'—'}</td><td style={{fontFamily:'monospace',color:'#e2e8f0'}}>{h.address||'—'}</td><td style={{color:'#94a3b8'}}>{h.hostname||'—'}</td></tr>)}</tbody></table></div>:<p style={{fontSize:13,color:'#64748b'}}>No traceroute in this scan.</p>}</div>
+    </div></div>)}</div>;
+}
+
+function Findings({scan}){const[cat,setCat]=useState('all');const[limit,setLimit]=useState(100);
+  const cats=useMemo(()=>['all',...Array.from(new Set(scan.findings.map(f=>f.category))).sort()],[scan.findings]);
+  const filt=cat==='all'?scan.findings:scan.findings.filter(f=>f.category===cat);
+  const sourceOutputs=useMemo(()=>new Map(scan.nseScripts.map(s=>[s.host+':'+(s.port||'')+':NSE: '+s.id,s.output])),[scan.nseScripts]);
+  const groups=[['CONFIRMED','Confirmed','#f43f5e'],['POTENTIAL','Potential','#facc15'],['INFORMATIONAL','Informational','#ffffff']];
+  if(!scan.findings.length)return <Empty title="No findings"/>;
+  return <div><div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:16}}>{cats.map(c=><button key={c} onClick={()=>setCat(c)} style={{border:'none',borderRadius:6,padding:'6px 10px',fontSize:12,fontWeight:500,textTransform:'capitalize',cursor:'pointer',background:cat===c?'#ffffff':'#161616',color:cat===c?'#000000':'#cbd5e1'}}>{c}</button>)}</div>
+    <div style={{display:'flex',flexDirection:'column',gap:24}}>{groups.map(([key,label,color])=>{const items=filt.slice(0,limit).filter(f=>f.confidence===key);if(!items.length)return null;
+      return <div key={key}><h3 style={{display:'flex',gap:8,alignItems:'center',fontSize:14,color,margin:'0 0 8px'}}>{label}<span className="badge" style={{background:'#161616',color:'#94a3b8'}}>{items.length}</span></h3>
+        <div className="card">{items.map(f=><div key={f.id} style={{display:'flex',gap:12,alignItems:'flex-start',padding:'10px 16px',borderTop:'1px solid rgba(255,255,255,0.22)99'}}>
+          <span className="badge" style={{background:'#161616',color:'#94a3b8',flexShrink:0}}>{f.category}</span>
+          <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontSize:13,color:'#f1f5f9'}}>{f.title}</p>{f.detail&&<p style={{margin:0,fontSize:12,color:'#64748b',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.detail}</p>}{sourceOutputs.get(f.host+':'+(f.port||'')+':'+f.source)&&<details style={{marginTop:4}}><summary style={{fontSize:12,color:'#fff'}}>View source: {f.source}</summary><pre style={{maxHeight:192,overflow:'auto',whiteSpace:'pre-wrap',wordBreak:'break-word',background:'#000',padding:8,fontFamily:'monospace',fontSize:11}}>{sourceOutputs.get(f.host+':'+(f.port||'')+':'+f.source)}</pre></details>}</div>
+          <ConfBadge v={f.confidence}/></div>)}</div></div>;})}{filt.length>limit&&<button className="btn" style={{width:'100%',justifyContent:'center'}} onClick={()=>setLimit(n=>n+100)}>Show next 100 ({filt.length-limit} remaining)</button>}</div></div>;
+}
+
+function Raw({scan,fileName}){const[q,setQ]=useState('');const dq=useDeferredValue(q);const[limit,setLimit]=useState(500);const lines=useMemo(()=>scan.rawOutput.split('\n'),[scan.rawOutput]);
+  const matches=useMemo(()=>{if(!dq.trim())return null;const t=dq.toLowerCase();const s=new Set();lines.forEach((l,i)=>l.toLowerCase().includes(t)&&s.add(i));return s;},[lines,dq]);
+  const dl=()=>{const b=new Blob([scan.rawOutput],{type:'text/plain'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=fileName||'nmap_scan.txt';a.click();URL.revokeObjectURL(u);};
+  const shown=matches?Array.from(matches).slice(0,limit):Array.from({length:Math.min(limit,lines.length)},(_,i)=>i);
+  return <div className="card" style={{overflow:'hidden'}}><div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8,borderBottom:'1px solid rgba(255,255,255,0.22)',background:'rgba(11,17,28,.5)',padding:8}}>
+    <input className="input" style={{width:256,padding:'6px 12px'}} placeholder="Search raw output…" value={q} onChange={e=>setQ(e.target.value)}/>
+    <div style={{display:'flex',gap:8,alignItems:'center'}}>{matches&&<span style={{fontSize:12,color:'#64748b'}}>{matches.size} matching line(s)</span>}<Copy text={scan.rawOutput}/><button className="btn" style={{padding:'4px 8px',fontSize:12}} onClick={dl}>Download</button></div></div>
+    <div style={{maxHeight:'calc(100vh - 220px)',overflow:'auto'}}><table style={{fontFamily:'monospace',fontSize:11}}><tbody>{shown.map(i=><tr key={i} style={{background:matches?'rgba(255,255,255,.1)':''}}>
+      <td style={{userSelect:'none',borderRight:'1px solid rgba(255,255,255,0.22)99',textAlign:'right',color:'#475569',padding:'0 8px',verticalAlign:'top'}}>{i+1}</td>
+      <td style={{whiteSpace:'pre-wrap',wordBreak:'break-all',padding:'0 12px',color:'#cbd5e1'}}>{lines[i]||' '}</td></tr>)}</tbody></table>{(matches?matches.size:lines.length)>limit&&<button className="btn" style={{width:'calc(100% - 24px)',margin:12,justifyContent:'center'}} onClick={()=>setLimit(n=>n+500)}>Show next 500 ({(matches?matches.size:lines.length)-limit} remaining)</button>}</div></div>;
+}
+
+/* ---------------- Global search ---------------- */
+function GlobalSearch({scan,onClose,onNav}){const[q,setQ]=useState('');const dq=useDeferredValue(q);const ref=useRef(null);
+  useEffect(()=>{ref.current&&ref.current.focus();const e=ev=>ev.key==='Escape'&&onClose();window.addEventListener('keydown',e);return()=>window.removeEventListener('keydown',e);},[]);
+  const hits=useMemo(()=>{const t=dq.trim().toLowerCase();if(!t)return[];const out=[];
+    scan.ports.forEach(p=>{if(out.length>=60)return;if((p.port+' '+p.service+' '+p.product+' '+p.version).toLowerCase().includes(t))out.push({tab:'ports',type:'Port',title:p.port+'/'+p.protocol+' '+(p.service||''),detail:[p.product,p.version].filter(Boolean).join(' ')||p.state});});
+    scan.vulnerabilities.forEach(v=>{if(out.length>=60)return;const ch=v.cves.some(c=>c.id.toLowerCase().includes(t));if(v.title.toLowerCase().includes(t)||ch||(v.service||'').toLowerCase().includes(t))out.push({tab:'vulns',type:v.confidence==='CONFIRMED'?'Confirmed':'Potential',title:v.title,detail:v.host+(v.port?':'+v.port:'')+(ch?' · '+v.cves.filter(c=>c.id.toLowerCase().includes(t)).map(c=>c.id).slice(0,3).join(', '):'')});});
+    scan.nseScripts.forEach(s=>{if(out.length>=60)return;if((s.id+' '+s.output).toLowerCase().includes(t))out.push({tab:'nse',type:'NSE',title:s.id,detail:s.host+(s.port?':'+s.port:'')+(s.state?' · '+s.state:'')});});
+    scan.findings.forEach(f=>{if(out.length>=60)return;if((f.title+' '+f.detail+' '+f.category).toLowerCase().includes(t))out.push({tab:'findings',type:f.category,title:f.title,detail:f.detail});});
+    return out;},[dq,scan]);
+  return <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:40,background:'rgba(0,0,0,.6)',display:'flex',justifyContent:'center',alignItems:'flex-start',padding:16,paddingTop:96}}>
+    <div role="dialog" aria-modal="true" aria-label="Search scan data" onClick={e=>e.stopPropagation()} className="card" style={{width:'100%',maxWidth:640,overflow:'hidden',background:'#0d0d0d'}}>
+      <div style={{display:'flex',gap:8,alignItems:'center',borderBottom:'1px solid rgba(255,255,255,0.22)',padding:'12px 16px'}}><span style={{color:'#64748b'}}>🔍</span>
+        <input ref={ref} aria-label="Search scan data" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search everything — “vsftpd”, “3306”, a CVE id…" style={{flex:1,background:'transparent',border:'none',outline:'none',color:'#f1f5f9',fontSize:14}}/>
+        <button className="btn" style={{padding:'4px 8px'}} aria-label="Close search" onClick={onClose}>✕</button></div>
+      <div style={{maxHeight:'60vh',overflow:'auto'}}>{q.trim()&&!hits.length&&<p style={{padding:32,textAlign:'center',color:'#64748b',fontSize:14}}>No matches.</p>}
+        {hits.map((h,i)=><button key={i} onClick={()=>onNav(h.tab)} style={{width:'100%',display:'flex',gap:12,alignItems:'center',padding:'10px 16px',borderBottom:'1px solid rgba(255,255,255,0.22)66',background:'none',border:'none',cursor:'pointer',textAlign:'left',color:'#e2e8f0'}}>
+          <span className="badge" style={{background:'#161616',color:'#94a3b8',flexShrink:0}}>{h.type}</span>
+          <div style={{minWidth:0,flex:1}}><p style={{margin:0,fontSize:13,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{h.title}</p><p style={{margin:0,fontSize:12,color:'#64748b',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{h.detail}</p></div></button>)}</div>
+    </div></div>;
+}
+
+/* ---------------- App shell ---------------- */
+const TABS=[['overview','Overview'],['hosts','Hosts'],['ports','Ports'],['services','Services'],['vulns','Vulnerabilities'],['web','Web'],['nse','NSE Scripts'],['os','OS & Network'],['findings','Findings'],['raw','Raw Output']];
+function App(){const[started,setStarted]=useState(false);const[scan,setScan]=useState(null);const[name,setName]=useState('');const[tab,setTab]=useState('overview');const[err,setErr]=useState('');const[search,setSearch]=useState(false);const[report,setReport]=useState(false);
+  useEffect(()=>{const h=e=>{const tg=e.target&&e.target.tagName;if(e.key==='/'&&tg!=='INPUT'&&tg!=='TEXTAREA'){e.preventDefault();setSearch(true);}};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h);},[]);
+  const run=(n,text)=>{try{const r=analyze(text);if(!r.hosts.length&&!r.ports.length&&!r.scan.nmapVersion){setErr("This doesn't look like Nmap output — no scan header, hosts or ports were found.");return false;}setErr('');setScan(r);setName(n);setTab('overview');return true;}catch(e){setErr('Failed to parse: '+e.message);return false;}};
+  if(!started)return <Landing onStart={()=>setStarted(true)}/>;
+  if(!scan)return <Upload onAnalyze={run} error={err}/>;
+  const badge={hosts:scan.stats.hostsTotal,ports:scan.stats.openPorts,services:scan.stats.services,vulns:scan.stats.confirmed+scan.stats.potential,web:scan.webFindings.length,nse:scan.nseScripts.length,os:scan.osNetwork.length,findings:scan.findings.length};
+  return <div style={{display:'flex',minHeight:'100vh',position:'relative'}}>
+    <SpaceBg variant="app"/>
+    <aside style={{width:240,flexShrink:0,borderRight:'1px solid rgba(255,255,255,0.22)',background:'rgba(11,17,28,.7)',backdropFilter:'blur(10px)',display:'flex',flexDirection:'column',position:'relative',zIndex:30}} className="sidebar">
+      <div style={{display:'flex',gap:8,alignItems:'center',borderBottom:'1px solid rgba(255,255,255,0.22)',padding:16}}><div style={{width:32,height:32,borderRadius:8,background:'rgba(255,255,255,.15)',color:'#ffffff',display:'flex',alignItems:'center',justifyContent:'center'}}><Wolf size={24}/></div>
+        <div><p style={{margin:0,fontSize:14,fontWeight:700}}>Night Watch</p><p style={{margin:0,fontSize:10,color:'#64748b',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:160}}>{name}</p></div></div>
+      <nav style={{padding:8,flex:1}}>{TABS.map(([id,label])=><button key={id} className={'tabbtn'+(tab===id?' active':'')} onClick={()=>setTab(id)}><span style={{flex:1}}>{label}</span>{badge[id]>0&&<span style={{background:'#161616',borderRadius:99,padding:'0 6px',fontSize:10,color:'#94a3b8'}}>{badge[id]}</span>}</button>)}</nav>
+      <div style={{borderTop:'1px solid rgba(255,255,255,0.22)',padding:8}}><button className="btn" style={{width:'100%',justifyContent:'center'}} onClick={()=>{setScan(null);setName('');}}>↺ New scan</button></div>
+    </aside>
+    <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',position:'relative',zIndex:10}}>
+      <header style={{position:'sticky',top:0,zIndex:10,display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid rgba(255,255,255,0.22)',background:'rgba(11,17,28,.6)',backdropFilter:'blur(10px)',padding:'12px 16px'}}>
+        <div style={{fontSize:14,color:'#94a3b8'}}><span style={{color:"#64748b"}}>Night Watch</span> <span style={{color:'#444444'}}>/</span> <span style={{color:'#fff',fontWeight:500}}>{TABS.find(t=>t[0]===tab)[1]}</span></div>
+        <div style={{marginLeft:'auto',display:'flex',gap:8}}><button className="btn" onClick={()=>setSearch(true)}>🔍 Search <kbd style={{background:'#242424',borderRadius:4,padding:'0 6px',fontSize:10,color:'#94a3b8'}}>/</kbd></button><button className="btnp" onClick={()=>setReport(true)}>⬇ Export Report</button></div></header>
+      <main style={{flex:1,minWidth:0,padding:24}}>
+        {tab==='overview'&&<Overview scan={scan}/>}{tab==='hosts'&&<Hosts scan={scan}/>}{tab==='ports'&&<Ports scan={scan}/>}{tab==='services'&&<Services scan={scan}/>}
+        {tab==='vulns'&&<Vulns scan={scan}/>}{tab==='web'&&<Web scan={scan}/>}{tab==='nse'&&<Nse scan={scan}/>}{tab==='os'&&<OsNet scan={scan}/>}
+        {tab==='findings'&&<Findings scan={scan}/>}{tab==='raw'&&<Raw scan={scan} fileName={name}/>}
+      </main></div>
+    {search&&<GlobalSearch scan={scan} onClose={()=>setSearch(false)} onNav={t=>{setTab(t);setSearch(false);}}/>}
+    {report&&<ReportDialog scan={scan} onClose={()=>setReport(false)}/>}
+    <ChatBot scan={scan}/>
+  </div>;
+}
+
+/* ---------------- Scan Assistant chatbot (local default + BYO-key AI) ---------------- */
+const LS_AI='nmap-analyzer.ai';
+function loadAi(){try{const r=localStorage.getItem(LS_AI);if(r)return JSON.parse(r);}catch(e){}return{provider:'openai',keys:{}};}
+function saveAi(v){try{localStorage.setItem(LS_AI,JSON.stringify(v));}catch(e){}}
+function mdBold(text){return text.split(/(\*\*[^*]+\*\*)/g).map((p,i)=>p.startsWith('**')&&p.endsWith('**')?<strong key={i}>{p.slice(2,-2)}</strong>:<span key={i}>{p}</span>);}
+function ChatBot({scan}){
+  const[open,setOpen]=useState(false);const[mode,setMode]=useState('local');const[aiConsent,setAiConsent]=useState(false);const[ai,setAi]=useState(loadAi);
+  const[settings,setSettings]=useState(false);const[msgs,setMsgs]=useState([]);const[input,setInput]=useState('');const[busy,setBusy]=useState(false);
+  const endRef=useRef(null);
+  useEffect(()=>saveAi(ai),[ai]);
+  useEffect(()=>{if(endRef.current)endRef.current.scrollIntoView({behavior:'smooth'});},[msgs,busy]);
+  const curKey=(ai.keys&&ai.keys[ai.provider])||'';
+  const send=async()=>{const text=input.trim();if(!text||busy)return;setInput('');const next=[...msgs,{role:'user',content:text}];setMsgs(next);
+    if(mode==='local'){setMsgs([...next,{role:'assistant',content:answerLocally(scan,text)}]);return;}
+    if(!aiConsent){setMsgs([...next,{role:'assistant',content:'AI sharing is off. Review and accept the data-sharing notice above before sending scan context to a provider.'}]);return;}
+    if(!curKey.trim()){setSettings(true);setMsgs([...next,{role:'assistant',content:'Add your API key (key icon above) to use AI mode.'}]);return;}
+    setBusy(true);
+    try{const reply=await askAi({provider:ai.provider,apiKey:curKey,model:ai.model},scan,msgs,text);setMsgs([...next,{role:'assistant',content:reply}]);}
+    catch(e){setMsgs([...next,{role:'assistant',content:'⚠ '+e.message+'\n\nIf this is a network/CORS error, browser-to-provider calls may be blocked here — try the full app on localhost, or use Local mode (always works).'}]);}
+    finally{setBusy(false);}
+  };
+  if(!open)return <button onClick={()=>setOpen(true)} title="Ask about your scan" style={{position:'fixed',bottom:20,right:20,zIndex:40,width:48,height:48,borderRadius:99,background:'#ffffff',color:'#000000',border:'none',cursor:'pointer',fontSize:22,boxShadow:'0 4px 16px rgba(0,0,0,.4)'}}>💬</button>;
+  const Mode=({m,label})=><button aria-pressed={mode===m} onClick={()=>{setMode(m);setAiConsent(false);}} style={{flex:1,border:'none',borderRadius:6,padding:'6px',fontSize:12,fontWeight:500,cursor:'pointer',background:mode===m?'#242424':'transparent',color:mode===m?'#fff':'#94a3b8'}}>{label}</button>;
+  const prov=PROVIDERS.find(p=>p.id===ai.provider);
+  return <div style={{position:'fixed',bottom:20,right:20,zIndex:40,width:380,maxWidth:'calc(100vw - 2rem)',height:560,maxHeight:'85vh',display:'flex',flexDirection:'column',borderRadius:12,border:'1px solid rgba(255,255,255,0.22)',background:'#0d0d0d',boxShadow:'0 10px 40px rgba(0,0,0,.5)',overflow:'hidden'}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'1px solid rgba(255,255,255,0.22)',background:'#080808',padding:'10px 12px'}}>
+      <span style={{fontSize:14,fontWeight:600,color:'#fff'}}>{mode==='local'?'🖥️':'🤖'} Scan Assistant</span>
+      <div style={{display:'flex',gap:4}}>
+        <button title="AI settings" onClick={()=>setSettings(s=>!s)} className="btn" style={{padding:'4px 8px'}}>🔑</button>
+        <button title="Clear" onClick={()=>setMsgs([])} className="btn" style={{padding:'4px 8px'}}>🗑</button>
+        <button onClick={()=>setOpen(false)} className="btn" style={{padding:'4px 8px'}}>✕</button></div></div>
+    <div style={{display:'flex',gap:4,borderBottom:'1px solid rgba(255,255,255,0.22)',background:'rgba(11,17,28,.6)',padding:6}}><Mode m="local" label="🖥️ Local"/><Mode m="ai" label="🤖 AI (your key)"/></div>
+    {mode==='ai'&&<div role="note" style={{borderBottom:'1px solid #f59e0b4d',background:'rgba(245,158,11,.1)',padding:12}}><p style={{margin:0,fontSize:12,lineHeight:1.5,color:'#fef3c7'}}>AI mode sends scan details and this conversation to {prov&&prov.label}. Your API key is saved in this browser's local storage.</p>{!aiConsent?<button onClick={()=>setAiConsent(true)} style={{marginTop:8,border:0,borderRadius:6,padding:'6px 10px',background:'#fcd34d',color:'#111',fontWeight:600,cursor:'pointer'}}>I understand — enable sharing</button>:<button onClick={()=>{setAiConsent(false);setMode('local');}} style={{marginTop:8,border:0,background:'none',color:'#fde68a',textDecoration:'underline',cursor:'pointer'}}>Turn off sharing and return to Local</button>}</div>}
+    {settings&&<div style={{borderBottom:'1px solid rgba(255,255,255,0.22)',background:'#080808',padding:12,display:'flex',flexDirection:'column',gap:8}}>
+      <p style={{margin:0,fontSize:11,color:'#94a3b8'}}>AI mode sends your scan context to the chosen provider. The key is stored in this browser only.</p>
+      <select className="input" style={{padding:'6px 10px',fontSize:13}} value={ai.provider} onChange={e=>{if(e.target.value!==ai.provider)setAiConsent(false);setAi({...ai,provider:e.target.value,model:undefined});}}>{PROVIDERS.map(p=><option key={p.id} value={p.id}>{p.label} — {p.defaultModel}</option>)}</select>
+      <input type="password" className="input" style={{padding:'6px 10px',fontSize:13}} placeholder={'API key ('+(prov&&prov.keyHint)+')'} value={(ai.keys&&ai.keys[ai.provider])||''} onChange={e=>setAi({...ai,keys:{...ai.keys,[ai.provider]:e.target.value}})}/>
+      <input className="input" style={{padding:'6px 10px',fontSize:13}} placeholder={'Model (optional, default '+(prov&&prov.defaultModel)+')'} value={ai.model||''} onChange={e=>setAi({...ai,model:e.target.value||undefined})}/>
+      {(ai.keys&&ai.keys[ai.provider])&&<button onClick={()=>setAi({...ai,keys:{...ai.keys,[ai.provider]:''}})} style={{background:'none',border:'none',color:'#64748b',fontSize:11,cursor:'pointer',textAlign:'left',padding:0}}>Forget {prov&&prov.label} key</button>}
+    </div>}
+    <div style={{flex:1,overflowY:'auto',padding:12,display:'flex',flexDirection:'column',gap:12}}>
+      {msgs.length===0&&<div style={{fontSize:12,color:'#94a3b8'}}><p style={{marginTop:0}}>{mode==='local'?'I answer from your parsed scan — nothing leaves this browser. Ask me anything about it.':(!aiConsent?'Enable sharing above before scan context can be sent to a provider.':(curKey?'AI mode active. Ask open-ended questions about your scan.':'AI mode selected — add your API key (🔑) to start.'))}</p>
+        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>{['Most critical issue?','Is port 445 open?','How do I fix vsftpd?','Show confirmed findings'].map(s=><button key={s} onClick={()=>setInput(s)} style={{border:'1px solid rgba(255,255,255,0.22)',background:'#161616',color:'#cbd5e1',borderRadius:6,padding:'4px 8px',fontSize:11,cursor:'pointer'}}>{s}</button>)}</div></div>}
+      {msgs.map((m,i)=><div key={i} style={{display:'flex',justifyContent:m.role==='user'?'flex-end':'flex-start'}}>
+        <div style={{maxWidth:'85%',whiteSpace:'pre-wrap',borderRadius:8,padding:'8px 12px',fontSize:13,background:m.role==='user'?'#ffffff':'#080808',color:m.role==='user'?'#000000':'#e2e8f0',border:m.role==='user'?'none':'1px solid rgba(255,255,255,0.22)'}}>{mdBold(m.content)}</div></div>)}
+      {busy&&<div style={{display:'flex'}}><div style={{borderRadius:8,padding:'8px 12px',fontSize:13,background:'#080808',border:'1px solid rgba(255,255,255,0.22)',color:'#94a3b8'}}>Thinking…</div></div>}
+      <div ref={endRef}/></div>
+    <div style={{borderTop:'1px solid rgba(255,255,255,0.22)',padding:8}}><div style={{display:'flex',gap:8,alignItems:'flex-end'}}>
+      <textarea className="input" rows={1} style={{flex:1,resize:'none',minHeight:38,maxHeight:96,fontSize:13}} placeholder={mode==='local'?'Ask about your scan…':'Ask your AI…'} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}}/>
+      <button className="btnp" style={{padding:'9px 12px'}} onClick={send} disabled={busy||!input.trim()}>➤</button></div></div>
+  </div>;
+}
+
+function ReportDialog({scan,onClose}){const[client,setClient]=useState('');const[author,setAuthor]=useState('');const[assessment,setAssessment]=useState('');const[reportId,setReportId]=useState('');const[appendix,setAppendix]=useState(true);const[confirmed,setConfirmed]=useState(true);const[potential,setPotential]=useState(true);const[err,setErr]=useState('');
+  useEffect(()=>{const h=e=>e.key==='Escape'&&onClose();window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h);},[]);
+  const gen=()=>{const ok=openReport(scan,{assessmentName:assessment.trim()||undefined,reportId:reportId.trim()||undefined,clientName:client.trim()||undefined,preparedBy:author.trim()||undefined,includeAppendix:appendix,includeConfirmed:confirmed,includePotential:potential});if(!ok){setErr('Your browser blocked the report window. Allow pop-ups for this site and try again.');return;}onClose();};
+  const L=({children})=><span style={{display:'block',marginBottom:4,fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em',color:'#64748b'}}>{children}</span>;
+  return <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:50,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+    <div role="dialog" aria-modal="true" aria-labelledby="standalone-report-title" onClick={e=>e.stopPropagation()} className="card" style={{width:'100%',maxWidth:440,maxHeight:'90vh',overflowY:'auto',padding:20}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}><h3 id="standalone-report-title" style={{margin:0,fontSize:18,color:'#fff'}}>⬇ Export security report</h3><button className="btn" style={{padding:'4px 8px'}} aria-label="Close report options" onClick={onClose}>✕</button></div>
+      <p style={{fontSize:12,color:'#94a3b8',marginBottom:16}}>Generates a professional, client-ready report (executive summary, prioritized remediation, detailed findings). It opens in a new tab with the print dialog — choose <b>“Save as PDF”</b> as the destination.</p>
+      <div style={{marginBottom:12}}><L>Assessment name (optional)</L><input className="input" placeholder="e.g. External network review" value={assessment} onChange={e=>setAssessment(e.target.value)}/></div>
+      <div style={{marginBottom:12}}><L>Report reference (optional)</L><input className="input" placeholder="e.g. NW-2026-014" value={reportId} onChange={e=>setReportId(e.target.value)}/></div>
+      <div style={{marginBottom:12}}><L>Client / organization (optional)</L><input className="input" placeholder="e.g. Acme Corp" value={client} onChange={e=>setClient(e.target.value)}/></div>
+      <div style={{marginBottom:12}}><L>Prepared by (optional)</L><input className="input" placeholder="Your name" value={author} onChange={e=>setAuthor(e.target.value)}/></div>
+      <label style={{display:'flex',gap:8,alignItems:'center',fontSize:13,color:'#cbd5e1',marginBottom:16,cursor:'pointer'}}><input type="checkbox" checked={appendix} onChange={e=>setAppendix(e.target.checked)}/> Include open-ports appendix</label>
+      <fieldset style={{border:'1px solid rgba(255,255,255,.2)',borderRadius:8,padding:12,margin:'0 0 16px'}}><legend style={{fontSize:11,color:'#94a3b8'}}>Finding sections</legend>
+        <label style={{display:'flex',gap:8,alignItems:'center',fontSize:13,color:'#cbd5e1',marginBottom:8}}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> Confirmed findings</label>
+        <label style={{display:'flex',gap:8,alignItems:'center',fontSize:13,color:'#cbd5e1'}}><input type="checkbox" checked={potential} onChange={e=>setPotential(e.target.checked)}/> Potential findings</label>
+      </fieldset>
+      {err&&<p style={{border:'1px solid #f43f5e66',background:'rgba(244,63,94,.1)',color:'#f43f5e',borderRadius:8,padding:'8px 12px',fontSize:12,marginBottom:12}}>{err}</p>}
+      <div style={{display:'flex',justifyContent:'flex-end',gap:8}}><button className="btn" onClick={onClose}>Cancel</button><button className="btnp" onClick={gen}>Generate report</button></div>
+    </div></div>;
+}
+
+/* Responsive: collapse two-column grids on narrow screens. */
+const mq=document.createElement('style');
+mq.textContent='@media(max-width:820px){.respgrid{grid-template-columns:1fr !important;}.sidebar{width:180px !important;}}';
+document.head.appendChild(mq);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

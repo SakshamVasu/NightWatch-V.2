@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nmaprun scanner="nmap" args="nmap -sV -sC -oX small.xml 10.10.10.5" start="1709287200" startstr="Sat Mar  1 10:00:00 2025" version="7.94">
+<host starttime="1709287200" endtime="1709287224">
+<status state="up" reason="arp-response"/>
+<address addr="10.10.10.5" addrtype="ipv4"/>
+<address addr="08:00:27:AB:CD:EF" addrtype="mac" vendor="Oracle VirtualBox"/>
+<hostnames><hostname name="target.local" type="PTR"/></hostnames>
+<ports>
+<extraports state="closed" count="997"/>
+<port protocol="tcp" portid="21"><state state="open" reason="syn-ack"/><service name="ftp" product="vsftpd" version="2.3.4" method="probed" conf="10"/>
+<script id="ftp-vsftpd-backdoor" output="VULNERABLE:&#10;vsftpd 2.3.4 backdoor&#10;State: VULNERABLE (Exploitable)&#10;IDs: CVE:CVE-2011-2523"/>
+</port>
+<port protocol="tcp" portid="80"><state state="open" reason="syn-ack"/><service name="http" product="Apache httpd" version="2.4.7" extrainfo="(Ubuntu)"/>
+<script id="http-title" output="Apache2 Ubuntu Default Page"/>
+</port>
+</ports>
+<os><osmatch name="Linux 3.2 - 4.9" accuracy="95"><osclass vendor="Linux" osfamily="Linux" osgen="3.X"><cpe>cpe:/o:linux:linux_kernel:3</cpe></osclass></osmatch></os>
+<distance value="1"/>
+<trace><hop ttl="1" ipaddr="10.10.10.5" rtt="0.45"/></trace>
+</host>
+<runstats><finished time="1709287224" timestr="Sat Mar  1 10:00:24 2025" elapsed="24.13"/></runstats>
+</nmaprun>

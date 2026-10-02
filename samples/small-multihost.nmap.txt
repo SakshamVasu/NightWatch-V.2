@@ -1,0 +1,30 @@
+┌──(kali㉿kali)-[~]
+└─$ sudo nmap -sV -O -T4 10.10.10.5 scanme.example.com | tee small_scan.txt
+[sudo] password for kali:
+Starting Nmap 7.94 ( https://nmap.org ) at 2025-03-01 10:00 UTC
+Nmap scan report for 10.10.10.5
+Host is up (0.045s latency).
+Not shown: 997 filtered tcp ports (no-response)
+PORT    STATE  SERVICE  VERSION
+22/tcp  open   ssh      OpenSSH 8.2p1 Ubuntu 4ubuntu0.5 (Ubuntu Linux; protocol 2.0)
+80/tcp  open   http     nginx 1.18.0 (Ubuntu)
+443/tcp closed https
+MAC Address: 08:00:27:AB:CD:EF (Oracle VirtualBox virtual NIC)
+Device type: general purpose
+Running: Linux 5.X
+OS CPE: cpe:/o:linux:linux_kernel:5
+OS details: Linux 5.0 - 5.14
+Network Distance: 2 hops
+
+Nmap scan report for scanme.example.com (10.10.10.99)
+Host is up (0.088s latency).
+Not shown: 998 closed tcp ports (reset)
+PORT     STATE SERVICE VERSION
+21/tcp   open  ftp     vsftpd 3.0.3
+8080/tcp open  http    Apache Tomcat 9.0.30
+| http-title: Apache Tomcat
+|_Requested resource was /index.jsp
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 2 IP addresses (2 hosts up) scanned in 24.13 seconds
